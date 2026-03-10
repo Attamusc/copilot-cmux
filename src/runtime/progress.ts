@@ -17,14 +17,12 @@ export function estimateProgress(
   if (phase === "idle") return 1
 
   const toolSignal =
-    BASE_PROGRESS +
-    TOOL_WEIGHT * (1 - 1 / (1 + state.toolInvocations * TOOL_STEEPNESS))
+    BASE_PROGRESS + TOOL_WEIGHT * (1 - 1 / (1 + state.toolInvocations * TOOL_STEEPNESS))
 
   let timeSignal = 0
   if (state.startedAt !== undefined) {
     const elapsed = Math.max(0, now - state.startedAt)
-    timeSignal =
-      TIME_WEIGHT * (1 - Math.exp((-elapsed * Math.LN2) / TIME_HALF_LIFE_MS))
+    timeSignal = TIME_WEIGHT * (1 - Math.exp((-elapsed * Math.LN2) / TIME_HALF_LIFE_MS))
   }
 
   let progress = Math.min(0.95, Math.max(0, toolSignal + timeSignal))

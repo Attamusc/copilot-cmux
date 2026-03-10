@@ -35,9 +35,7 @@ interface SocketError {
 
 type SocketOutcome = SocketResult | SocketError
 
-export function socketRequest(
-  options: SocketRequestOptions,
-): Promise<SocketOutcome> {
+export function socketRequest(options: SocketRequestOptions): Promise<SocketOutcome> {
   return new Promise((resolve) => {
     let data = ""
     let settled = false
@@ -138,13 +136,10 @@ export class SocketCmuxClient implements CmuxClient {
 
   public async notify(payload: NotificationPayload): Promise<void> {
     const requestID = `req-${++this.requestCounter}`
-    await this.sendJsonRpc(buildSocketNotify(payload, requestID), "notify")
+    await this.sendJsonRpc(buildSocketNotify(payload, requestID, this.workspaceID), "notify")
   }
 
-  public async setStatus(
-    key: string,
-    payload: SidebarStatusPayload,
-  ): Promise<void> {
+  public async setStatus(key: string, payload: SidebarStatusPayload): Promise<void> {
     await this.sendText(buildSocketSetStatus(key, payload, this.workspaceID), "set_status")
   }
 

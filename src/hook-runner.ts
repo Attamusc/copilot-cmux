@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import type { HookName } from "./types.js"
 import { processHook } from "./runtime/processor.js"
+import type { HookName } from "./types.js"
 
 const HOOK_NAMES = new Set<HookName>([
   "sessionStart",
@@ -26,9 +26,7 @@ async function readStdin(): Promise<string> {
 async function main(): Promise<void> {
   const hookName = process.argv[2]
   if (!hookName || !HOOK_NAMES.has(hookName as HookName)) {
-    throw new Error(
-      `Expected a Copilot hook name argument (${Array.from(HOOK_NAMES).join(", ")})`,
-    )
+    throw new Error(`Expected a Copilot hook name argument (${Array.from(HOOK_NAMES).join(", ")})`)
   }
 
   const rawInput = await readStdin()
@@ -36,7 +34,7 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  const message = error instanceof Error ? error.stack ?? error.message : String(error)
+  const message = error instanceof Error ? (error.stack ?? error.message) : String(error)
   process.stderr.write(`[copilot-cmux] error: ${message}\n`)
   process.exitCode = 1
 })

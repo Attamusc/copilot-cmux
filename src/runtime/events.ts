@@ -1,4 +1,5 @@
 import { basename } from "node:path"
+import { summarizeText } from "../text.js"
 import type {
   ErrorOccurredHookInput,
   HookName,
@@ -39,34 +40,25 @@ function expectObject(value: unknown, context: string): Record<string, unknown> 
   return value as Record<string, unknown>
 }
 
-function expectString(
-  object: Record<string, unknown>,
-  key: string,
-  context: string,
-): string {
+function expectString(object: Record<string, unknown>, key: string, context: string): string {
   const value = object[key]
   if (typeof value !== "string") {
-    throw new Error(`${context}.${key} must be a string`)
+    const presentKeys = Object.keys(object).join(", ")
+    throw new Error(`${context}.${key} must be a string (present keys: ${presentKeys})`)
   }
   return value
 }
 
-function optionalString(
-  object: Record<string, unknown>,
-  key: string,
-): string | undefined {
+function optionalString(object: Record<string, unknown>, key: string): string | undefined {
   const value = object[key]
   return typeof value === "string" ? value : undefined
 }
 
-function expectNumber(
-  object: Record<string, unknown>,
-  key: string,
-  context: string,
-): number {
+function expectNumber(object: Record<string, unknown>, key: string, context: string): number {
   const value = object[key]
   if (typeof value !== "number" || !Number.isFinite(value)) {
-    throw new Error(`${context}.${key} must be a finite number`)
+    const presentKeys = Object.keys(object).join(", ")
+    throw new Error(`${context}.${key} must be a finite number (present keys: ${presentKeys})`)
   }
   return value
 }
@@ -112,11 +104,7 @@ function parseToolResult(value: unknown): ToolResult | undefined {
 
   const object = expectObject(value, "toolResult")
   const resultType = object.resultType
-  if (
-    resultType !== "success" &&
-    resultType !== "failure" &&
-    resultType !== "denied"
-  ) {
+  if (resultType !== "success" && resultType !== "failure" && resultType !== "denied") {
     throw new Error("toolResult.resultType must be success, failure, or denied")
   }
 
@@ -124,14 +112,6 @@ function parseToolResult(value: unknown): ToolResult | undefined {
     resultType,
     textResultForLlm: optionalString(object, "textResultForLlm"),
   }
-}
-
-export function summarizeText(text: string, maxLength: number = 72): string {
-  const normalized = text.replace(/\s+/g, " ").trim()
-  if (normalized.length <= maxLength) {
-    return normalized
-  }
-  return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`
 }
 
 export function describeToolCall(
@@ -156,7 +136,17 @@ export function describeToolCall(
 
 export function parseHookInput(hookName: HookName, rawInput: string): CopilotHookEvent {
   const context = `${hookName} input`
-  const parsed = expectObject(JSON.parse(rawInput || "{}"), context)
+
+  let raw: unknown
+  try {
+    raw = JSON.parse(rawInput || "{}")
+  } catch (cause) {
+    const preview = rawInput.length > 120 ? `${rawInput.slice(0, 120)}…` : rawInput
+    throw new Error(
+      `Failed to parse ${hookName} input as JSON: ${cause instanceof Error ? cause.message : String(cause)}. Received: ${preview}`,
+    )
+  }
+  const parsed = expectObject(raw, context)
 
   switch (hookName) {
     case "sessionStart": {

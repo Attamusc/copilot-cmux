@@ -12,10 +12,7 @@ function parseBoolean(value: string | undefined, fallback: boolean): boolean {
   return fallback
 }
 
-function parseTransport(
-  value: string | undefined,
-  fallback: TransportMode,
-): TransportMode {
+function parseTransport(value: string | undefined, fallback: TransportMode): TransportMode {
   if (!value) return fallback
 
   const normalized = value.trim().toLowerCase()
@@ -35,12 +32,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
     keepDoneStatus: parseBoolean(env.COPILOT_CMUX_KEEP_DONE_STATUS, true),
     logPrompts: parseBoolean(env.COPILOT_CMUX_LOG_PROMPTS, true),
     logToolCalls: parseBoolean(env.COPILOT_CMUX_LOG_TOOLS, true),
-    logSessionLifecycle: parseBoolean(
-      env.COPILOT_CMUX_LOG_SESSION_LIFECYCLE,
-      true,
-    ),
+    logSessionLifecycle: parseBoolean(env.COPILOT_CMUX_LOG_SESSION_LIFECYCLE, true),
     notifyOnSessionEnd: parseBoolean(env.COPILOT_CMUX_NOTIFY_SESSION_END, true),
     notifyOnErrors: parseBoolean(env.COPILOT_CMUX_NOTIFY_ERRORS, true),
+    logFileEdits: parseBoolean(env.COPILOT_CMUX_LOG_FILE_EDITS, true),
     debug: parseBoolean(env.COPILOT_CMUX_DEBUG, false),
   }
 }

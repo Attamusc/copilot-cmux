@@ -17,11 +17,11 @@ function quoteSocketArg(value: string): string {
   return value
 }
 
-export function buildNotifyCommand(payload: NotificationPayload): string[] {
+export function buildNotifyCommand(payload: NotificationPayload, workspaceID?: string): string[] {
   const args = ["notify", "--title", payload.title]
   if (payload.subtitle) args.push("--subtitle", payload.subtitle)
   if (payload.body) args.push("--body", payload.body)
-  return args
+  return withWorkspace(args, workspaceID)
 }
 
 export function buildSetStatusCommand(
@@ -29,29 +29,15 @@ export function buildSetStatusCommand(
   payload: SidebarStatusPayload,
   workspaceID?: string,
 ): string[] {
-  const args = [
-    "set-status",
-    key,
-    payload.text,
-    "--icon",
-    payload.icon,
-    "--color",
-    payload.color,
-  ]
+  const args = ["set-status", key, payload.text, "--icon", payload.icon, "--color", payload.color]
   return withWorkspace(args, workspaceID)
 }
 
-export function buildClearStatusCommand(
-  key: string,
-  workspaceID?: string,
-): string[] {
+export function buildClearStatusCommand(key: string, workspaceID?: string): string[] {
   return withWorkspace(["clear-status", key], workspaceID)
 }
 
-export function buildSetProgressCommand(
-  payload: ProgressPayload,
-  workspaceID?: string,
-): string[] {
+export function buildSetProgressCommand(payload: ProgressPayload, workspaceID?: string): string[] {
   return withWorkspace(
     ["set-progress", payload.value.toFixed(2), "--label", payload.label],
     workspaceID,
@@ -62,17 +48,8 @@ export function buildClearProgressCommand(workspaceID?: string): string[] {
   return withWorkspace(["clear-progress"], workspaceID)
 }
 
-export function buildLogCommand(
-  payload: SidebarLogPayload,
-  workspaceID?: string,
-): string[] {
-  const args = [
-    "log",
-    "--level",
-    payload.level,
-    "--source",
-    payload.source,
-  ]
+export function buildLogCommand(payload: SidebarLogPayload, workspaceID?: string): string[] {
+  const args = ["log", "--level", payload.level, "--source", payload.source]
   return withWorkspace([...args, "--", payload.message], workspaceID)
 }
 
@@ -91,17 +68,11 @@ export function buildSocketSetStatus(
   return withTab(command, workspaceID)
 }
 
-export function buildSocketClearStatus(
-  key: string,
-  workspaceID?: string,
-): string {
+export function buildSocketClearStatus(key: string, workspaceID?: string): string {
   return withTab(`clear_status ${key}`, workspaceID)
 }
 
-export function buildSocketSetProgress(
-  payload: ProgressPayload,
-  workspaceID?: string,
-): string {
+export function buildSocketSetProgress(payload: ProgressPayload, workspaceID?: string): string {
   const quotedLabel = quoteSocketArg(payload.label)
   const command = `set_progress ${payload.value.toFixed(2)} --label=${quotedLabel}`
   return withTab(command, workspaceID)
@@ -111,10 +82,7 @@ export function buildSocketClearProgress(workspaceID?: string): string {
   return withTab("clear_progress", workspaceID)
 }
 
-export function buildSocketLog(
-  payload: SidebarLogPayload,
-  workspaceID?: string,
-): string {
+export function buildSocketLog(payload: SidebarLogPayload, workspaceID?: string): string {
   const quotedSource = quoteSocketArg(payload.source)
   const quotedMessage = quoteSocketArg(payload.message)
   let command = `log --level=${payload.level} --source=${quotedSource}`
@@ -134,12 +102,13 @@ export function buildJsonRpc(
       cleanParams[key] = value
     }
   }
-  return JSON.stringify({ id: requestID, method, params: cleanParams }) + "\n"
+  return `${JSON.stringify({ id: requestID, method, params: cleanParams })}\n`
 }
 
 export function buildSocketNotify(
   payload: NotificationPayload,
   requestID: string,
+  workspaceID?: string,
 ): string {
   return buildJsonRpc(
     "notification.create",
@@ -147,6 +116,7 @@ export function buildSocketNotify(
       title: payload.title,
       subtitle: payload.subtitle,
       body: payload.body,
+      workspace_id: workspaceID,
     },
     requestID,
   )

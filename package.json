@@ -12,9 +12,11 @@
     "README.md"
   ],
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.json",
-    "test": "npm run build --silent && node --test tests/**/*.test.mjs",
-    "check": "npm test"
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "test": "node --import tsx --test tests/**/*.test.ts",
+    "check": "npm run lint && npm test",
+    "lint": "biome check src/ tests/",
+    "lint:fix": "biome check --write src/ tests/"
   },
   "engines": {
     "node": ">=20"
@@ -36,7 +38,9 @@
   },
   "homepage": "https://github.com/Attamusc/copilot-cmux#readme",
   "devDependencies": {
+    "@biomejs/biome": "^2.4.6",
     "@types/node": "^24.4.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.2"
   }
 }

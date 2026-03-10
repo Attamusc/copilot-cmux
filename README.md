@@ -24,7 +24,6 @@ Not yet modeled in this MVP:
 - Subagent lifecycle
 - Question / permission overlays
 - Todo progress
-- File edit event streams
 
 ## Requirements
 
@@ -86,6 +85,7 @@ Environment variables:
 | `COPILOT_CMUX_LOG_SESSION_LIFECYCLE` | `true` | Log session start/end transitions. |
 | `COPILOT_CMUX_NOTIFY_SESSION_END` | `true` | Notify when Copilot completes a session successfully. |
 | `COPILOT_CMUX_NOTIFY_ERRORS` | `true` | Notify when Copilot reports an error. |
+| `COPILOT_CMUX_LOG_FILE_EDITS` | `true` | Log file edit/create events to the cmux sidebar. |
 | `COPILOT_CMUX_DEBUG` | `false` | Emit verbose diagnostics to stderr. |
 
 ## Development

@@ -1,8 +1,9 @@
 import { basename } from "node:path"
-import { loadConfig } from "../config.js"
 import { createCmuxClient } from "../cmux/client.js"
 import { detectCmuxEnvironment } from "../cmux/detect.js"
+import { loadConfig } from "../config.js"
 import { createLogger } from "../logger.js"
+import { summarizeText } from "../text.js"
 import type {
   CmuxClient,
   HookLogger,
@@ -11,14 +12,14 @@ import type {
   RuntimeState,
   SidebarLogLevel,
 } from "../types.js"
-import {
-  parseHookInput,
-  summarizeText,
-  type CopilotHookEvent,
-} from "./events.js"
-import { reduceRuntimeState, createRuntimeState } from "./reducer.js"
+import { type CopilotHookEvent, parseHookInput } from "./events.js"
+import { createRuntimeState, reduceRuntimeState } from "./reducer.js"
 import { buildPresentationSnapshot } from "./renderer.js"
-import { withRuntimeState } from "./state-store.js"
+import { cleanupStaleStateFiles, withRuntimeState } from "./state-store.js"
+
+function isFileEditTool(toolName: string): boolean {
+  return toolName === "edit" || toolName === "create"
+}
 
 function projectLabelForCwd(cwd: string): string {
   return basename(cwd) || cwd
@@ -55,11 +56,7 @@ async function renderState(
   }
 }
 
-async function logEvent(
-  cmux: CmuxClient,
-  level: SidebarLogLevel,
-  message: string,
-): Promise<void> {
+async function logEvent(cmux: CmuxClient, level: SidebarLogLevel, message: string): Promise<void> {
   await cmux.log({
     level,
     source: "copilot",
@@ -84,22 +81,14 @@ async function emitEventEffects(
   switch (event.type) {
     case "session.start": {
       if (config.logSessionLifecycle) {
-        await logEvent(
-          cmux,
-          "info",
-          `${projectLabel}: Copilot session started (${event.source})`,
-        )
+        await logEvent(cmux, "info", `${projectLabel}: Copilot session started (${event.source})`)
       }
       break
     }
 
     case "user.prompt": {
       if (config.logPrompts) {
-        await logEvent(
-          cmux,
-          "info",
-          `${projectLabel}: prompt - ${summarizeText(event.prompt, 88)}`,
-        )
+        await logEvent(cmux, "info", `${projectLabel}: prompt - ${summarizeText(event.prompt, 88)}`)
       }
       break
     }
@@ -125,10 +114,15 @@ async function emitEventEffects(
             : event.resultType === "denied"
               ? "denied"
               : "finished"
-        const suffix = event.resultText
-          ? ` - ${summarizeText(event.resultText, 72)}`
-          : ""
+        const suffix = event.resultText ? ` - ${summarizeText(event.resultText, 72)}` : ""
         await logEvent(cmux, level, `${projectLabel}: ${verb} ${event.summary}${suffix}`)
+      }
+      if (config.logFileEdits && isFileEditTool(event.toolName) && event.resultType === "success") {
+        const filePath =
+          typeof event.parsedToolArgs?.path === "string"
+            ? basename(event.parsedToolArgs.path)
+            : event.toolName
+        await logEvent(cmux, "info", `${projectLabel}: ${event.toolName} ${filePath}`)
       }
       break
     }
@@ -213,6 +207,10 @@ export async function processHook(
     return
   }
 
+  if (hookName === "sessionStart") {
+    void cleanupStaleStateFiles()
+  }
+
   const cmux = createCmuxClient({
     binary: config.cmuxBin,
     environment,
@@ -242,15 +240,7 @@ export async function processHook(
       eventType: event.type,
     })
 
-    await emitEventEffects(
-      cmux,
-      config,
-      projectLabel,
-      previousState,
-      nextState,
-      event,
-      logger,
-    )
+    await emitEventEffects(cmux, config, projectLabel, previousState, nextState, event, logger)
     return nextState
   })
 

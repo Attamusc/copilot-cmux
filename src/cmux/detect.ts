@@ -15,9 +15,7 @@ function checkSocketExists(socketPath: string): boolean {
   }
 }
 
-export function detectCmuxEnvironment(
-  env: NodeJS.ProcessEnv = process.env,
-): CmuxEnvironment {
+export function detectCmuxEnvironment(env: NodeJS.ProcessEnv = process.env): CmuxEnvironment {
   const socketPath = normalize(env.CMUX_SOCKET_PATH) ?? "/tmp/cmux.sock"
   const workspaceID = normalize(env.CMUX_WORKSPACE_ID)
   const surfaceID = normalize(env.CMUX_SURFACE_ID)

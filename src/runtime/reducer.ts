@@ -21,6 +21,8 @@ export function createRuntimeState(
     lastToolName: undefined,
     lastToolSummary: undefined,
     lastResultType: undefined,
+    filesEdited: 0,
+    lastEditedFile: undefined,
     lastError: undefined,
     lastSessionEndReason: undefined,
   }
@@ -88,6 +90,8 @@ export function reduceRuntimeState(
         lastToolName: undefined,
         lastToolSummary: undefined,
         lastResultType: undefined,
+        filesEdited: 0,
+        lastEditedFile: undefined,
         lastError: undefined,
         lastSessionEndReason: undefined,
       }
@@ -126,6 +130,10 @@ export function reduceRuntimeState(
 
     case "tool.post": {
       const activeTools = decrementToolCount(currentState.activeTools, event.toolName)
+      const isFileEdit =
+        (event.toolName === "edit" || event.toolName === "create") && event.resultType === "success"
+      const filePath =
+        typeof event.parsedToolArgs?.path === "string" ? event.parsedToolArgs.path : undefined
       return {
         ...currentState,
         cwd: event.cwd,
@@ -138,6 +146,8 @@ export function reduceRuntimeState(
         lastToolName: event.toolName,
         lastToolSummary: event.summary,
         lastResultType: event.resultType,
+        filesEdited: isFileEdit ? currentState.filesEdited + 1 : currentState.filesEdited,
+        lastEditedFile: isFileEdit && filePath ? filePath : currentState.lastEditedFile,
       }
     }
 
@@ -147,12 +157,7 @@ export function reduceRuntimeState(
         cwd: event.cwd,
         workspaceID,
         updatedAt: event.timestamp,
-        phase:
-          event.reason === "complete"
-            ? "done"
-            : event.reason === "error"
-              ? "error"
-              : "idle",
+        phase: event.reason === "complete" ? "done" : event.reason === "error" ? "error" : "idle",
         activeTools: {},
         lastSessionEndReason: event.reason,
       }

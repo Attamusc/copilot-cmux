@@ -1,14 +1,7 @@
+import { summarizeTextWithFallback } from "../text.js"
 import type { PluginConfig, PresentationSnapshot, RuntimeState } from "../types.js"
 import { estimateProgress } from "./progress.js"
 import { describeActiveTools } from "./reducer.js"
-
-function summarizeText(text: string | undefined, fallback: string, maxLength: number = 56): string {
-  if (!text) return fallback
-  const normalized = text.replace(/\s+/g, " ").trim()
-  if (!normalized) return fallback
-  if (normalized.length <= maxLength) return normalized
-  return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`
-}
 
 function buildProgressLabel(state: RuntimeState, projectLabel: string): string {
   const activeTool = describeActiveTools(state)
@@ -17,7 +10,7 @@ function buildProgressLabel(state: RuntimeState, projectLabel: string): string {
   }
 
   if (state.phase === "thinking") {
-    return `${projectLabel}: ${summarizeText(state.lastPrompt, "thinking")}`
+    return `${projectLabel}: ${summarizeTextWithFallback(state.lastPrompt, "thinking")}`
   }
 
   return `${projectLabel}: working`

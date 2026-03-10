@@ -24,6 +24,7 @@ export interface PluginConfig {
   logSessionLifecycle: boolean
   notifyOnSessionEnd: boolean
   notifyOnErrors: boolean
+  logFileEdits: boolean
   debug: boolean
 }
 
@@ -95,11 +96,13 @@ export interface RuntimeState {
   lastToolName: string | undefined
   lastToolSummary: string | undefined
   lastResultType: ToolResultType | undefined
+  filesEdited: number
+  lastEditedFile: string | undefined
   lastError:
     | {
-      message: string
-      name: string | undefined
-    }
+        message: string
+        name: string | undefined
+      }
     | undefined
   lastSessionEndReason: SessionEndReason | undefined
 }

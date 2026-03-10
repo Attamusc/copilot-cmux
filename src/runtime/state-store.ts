@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto"
+import { statSync } from "node:fs"
+import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
 import type { RuntimeState } from "../types.js"
 
 interface StatePaths {
@@ -11,7 +12,9 @@ interface StatePaths {
 }
 
 function buildStateKey(cwd: string, workspaceID?: string): string {
-  return createHash("sha1").update(`${cwd}\u0000${workspaceID ?? ""}`).digest("hex")
+  return createHash("sha1")
+    .update(`${cwd}\u0000${workspaceID ?? ""}`)
+    .digest("hex")
 }
 
 function getStatePaths(cwd: string, workspaceID?: string): StatePaths {
@@ -28,7 +31,19 @@ async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+const STALE_LOCK_THRESHOLD_MS = 30_000
+
 async function acquireLock(lockPath: string): Promise<void> {
+  // Clean up stale locks from crashed processes
+  try {
+    const stat = statSync(lockPath)
+    if (Date.now() - stat.mtimeMs > STALE_LOCK_THRESHOLD_MS) {
+      await rm(lockPath, { recursive: true, force: true })
+    }
+  } catch {
+    // Lock doesn't exist — normal case
+  }
+
   for (let attempt = 0; attempt < 100; attempt += 1) {
     try {
       await mkdir(lockPath)
@@ -68,6 +83,31 @@ async function writeState(statePath: string, state: RuntimeState): Promise<void>
   const tempPath = `${statePath}.tmp`
   await writeFile(tempPath, `${JSON.stringify(state, null, 2)}\n`, "utf8")
   await rename(tempPath, statePath)
+}
+
+export async function cleanupStaleStateFiles(maxAgeMs: number = 3_600_000): Promise<void> {
+  const dir = join(tmpdir(), "copilot-cmux")
+  try {
+    const entries = await readdir(dir)
+    const now = Date.now()
+    await Promise.all(
+      entries
+        .filter((f) => f.endsWith(".json"))
+        .map(async (f) => {
+          try {
+            const raw = await readFile(join(dir, f), "utf8")
+            const state = JSON.parse(raw) as { updatedAt?: number }
+            if (typeof state.updatedAt === "number" && now - state.updatedAt > maxAgeMs) {
+              await rm(join(dir, f), { force: true })
+            }
+          } catch {
+            // Ignore per-file errors (locked, deleted, malformed, etc.)
+          }
+        }),
+    )
+  } catch {
+    // Directory doesn't exist or is unreadable — nothing to clean up
+  }
 }
 
 export async function withRuntimeState(

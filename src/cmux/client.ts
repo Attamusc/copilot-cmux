@@ -67,30 +67,22 @@ class CliCmuxClient implements CmuxClient {
   }
 
   public async notify(payload: Parameters<CmuxClient["notify"]>[0]): Promise<void> {
-    await this.execute("notify", buildNotifyCommand(payload))
+    await this.execute("notify", buildNotifyCommand(payload, this.workspaceID))
   }
 
   public async setStatus(
     key: string,
     payload: Parameters<CmuxClient["setStatus"]>[1],
   ): Promise<void> {
-    await this.execute(
-      "set-status",
-      buildSetStatusCommand(key, payload, this.workspaceID),
-    )
+    await this.execute("set-status", buildSetStatusCommand(key, payload, this.workspaceID))
   }
 
   public async clearStatus(key: string): Promise<void> {
     await this.execute("clear-status", buildClearStatusCommand(key, this.workspaceID))
   }
 
-  public async setProgress(
-    payload: Parameters<CmuxClient["setProgress"]>[0],
-  ): Promise<void> {
-    await this.execute(
-      "set-progress",
-      buildSetProgressCommand(payload, this.workspaceID),
-    )
+  public async setProgress(payload: Parameters<CmuxClient["setProgress"]>[0]): Promise<void> {
+    await this.execute("set-progress", buildSetProgressCommand(payload, this.workspaceID))
   }
 
   public async clearProgress(): Promise<void> {
