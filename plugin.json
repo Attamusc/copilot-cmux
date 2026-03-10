@@ -1,0 +1,12 @@
+{
+  "name": "copilot-cmux",
+  "description": "Surface GitHub Copilot CLI activity in cmux status, progress, and notifications.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Attamusc"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/Attamusc/copilot-cmux",
+  "keywords": ["copilot", "copilot-cli", "cmux", "tmux"],
+  "hooks": "hooks.json"
+}

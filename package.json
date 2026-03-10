@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "copilot-cmux",
+  "version": "0.1.0",
+  "description": "GitHub Copilot CLI plugin that surfaces Copilot activity in cmux",
+  "type": "module",
+  "main": "dist/hook-runner.js",
+  "files": [
+    "dist",
+    "plugin.json",
+    "hooks.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.json",
+    "test": "npm run build --silent && node --test tests/**/*.test.mjs",
+    "check": "npm test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "copilot",
+    "copilot-cli",
+    "cmux",
+    "plugin"
+  ],
+  "author": "Attamusc",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Attamusc/copilot-cmux.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Attamusc/copilot-cmux/issues"
+  },
+  "homepage": "https://github.com/Attamusc/copilot-cmux#readme",
+  "devDependencies": {
+    "@types/node": "^24.4.0",
+    "typescript": "^5.9.2"
+  }
+}
