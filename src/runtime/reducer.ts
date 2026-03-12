@@ -140,7 +140,7 @@ export function reduceRuntimeState(
         workspaceID,
         updatedAt: event.timestamp,
         startedAt: currentState.startedAt ?? event.timestamp,
-        phase: countActiveTools({ ...currentState, activeTools }) > 0 ? "working" : "thinking",
+        phase: countActiveTools({ ...currentState, activeTools }) > 0 ? "working" : "idle",
         activeTools,
         completedTools: currentState.completedTools + 1,
         lastToolName: event.toolName,

@@ -64,7 +64,7 @@ test("runtime state tracks prompt, active tools, and completion", () => {
     },
     "workspace-1",
   )
-  assert.equal(state.phase, "thinking")
+  assert.equal(state.phase, "idle")
 
   state = reduceRuntimeState(
     state,
@@ -81,6 +81,125 @@ test("runtime state tracks prompt, active tools, and completion", () => {
   const snapshot = buildPresentationSnapshot(state, config, "project", 4)
   assert.equal(snapshot.status?.text, "done")
   assert.equal(snapshot.progress, undefined)
+})
+
+test("tool.post stays working when other tools are still active", () => {
+  let state = createRuntimeState("/tmp/project", "workspace-1", 1)
+
+  // Start two tools
+  state = reduceRuntimeState(
+    state,
+    {
+      type: "tool.pre",
+      timestamp: 2,
+      cwd: "/tmp/project",
+      toolName: "bash",
+      summary: "bash: Run tests",
+    },
+    "workspace-1",
+  )
+  state = reduceRuntimeState(
+    state,
+    {
+      type: "tool.pre",
+      timestamp: 3,
+      cwd: "/tmp/project",
+      toolName: "grep",
+      summary: "grep: search",
+    },
+    "workspace-1",
+  )
+  assert.equal(state.phase, "working")
+  assert.deepEqual(state.activeTools, { bash: 1, grep: 1 })
+
+  // First tool completes — still working (grep still active)
+  state = reduceRuntimeState(
+    state,
+    {
+      type: "tool.post",
+      timestamp: 4,
+      cwd: "/tmp/project",
+      toolName: "bash",
+      summary: "bash: Run tests",
+      resultType: "success",
+    },
+    "workspace-1",
+  )
+  assert.equal(state.phase, "working")
+
+  // Second tool completes — now idle
+  state = reduceRuntimeState(
+    state,
+    {
+      type: "tool.post",
+      timestamp: 5,
+      cwd: "/tmp/project",
+      toolName: "grep",
+      summary: "grep: search",
+      resultType: "success",
+    },
+    "workspace-1",
+  )
+  assert.equal(state.phase, "idle")
+})
+
+test("same tool invoked twice stays working until both complete", () => {
+  let state = createRuntimeState("/tmp/project", "workspace-1", 1)
+
+  state = reduceRuntimeState(
+    state,
+    {
+      type: "tool.pre",
+      timestamp: 2,
+      cwd: "/tmp/project",
+      toolName: "bash",
+      summary: "bash: first",
+    },
+    "workspace-1",
+  )
+  state = reduceRuntimeState(
+    state,
+    {
+      type: "tool.pre",
+      timestamp: 3,
+      cwd: "/tmp/project",
+      toolName: "bash",
+      summary: "bash: second",
+    },
+    "workspace-1",
+  )
+  assert.deepEqual(state.activeTools, { bash: 2 })
+
+  // First bash completes — still working
+  state = reduceRuntimeState(
+    state,
+    {
+      type: "tool.post",
+      timestamp: 4,
+      cwd: "/tmp/project",
+      toolName: "bash",
+      summary: "bash: first",
+      resultType: "success",
+    },
+    "workspace-1",
+  )
+  assert.equal(state.phase, "working")
+  assert.deepEqual(state.activeTools, { bash: 1 })
+
+  // Second bash completes — idle
+  state = reduceRuntimeState(
+    state,
+    {
+      type: "tool.post",
+      timestamp: 5,
+      cwd: "/tmp/project",
+      toolName: "bash",
+      summary: "bash: second",
+      resultType: "success",
+    },
+    "workspace-1",
+  )
+  assert.equal(state.phase, "idle")
 })
 
 test("reducer tracks file edits from edit tool", () => {
