@@ -93,6 +93,19 @@ async function emitEventEffects(
       break
     }
 
+    case "agent.stop": {
+      if (config.logSessionLifecycle) {
+        await logEvent(cmux, "success", `${projectLabel}: response complete`)
+      }
+      if (config.notifyOnTurnEnd) {
+        await cmux.notify({
+          title: `Ready: ${projectLabel}`,
+          body: "Copilot finished responding",
+        })
+      }
+      break
+    }
+
     case "tool.pre": {
       if (config.logToolCalls) {
         await logEvent(cmux, "progress", `${projectLabel}: running ${event.summary}`)
