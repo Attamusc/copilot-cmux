@@ -78,9 +78,10 @@ test("runtime state tracks prompt, active tools, and completion", () => {
   )
   assert.equal(state.phase, "done")
 
+  // The session has ended, so the pill is cleared rather than left orphaned in
+  // the workspace after this tab's Copilot process is gone.
   const snapshot = buildPresentationSnapshot(state, config, "project", 4)
-  assert.equal(snapshot.status?.text, "done")
-  assert.equal(snapshot.progress, undefined)
+  assert.deepStrictEqual(snapshot, {})
 })
 
 test("tool.post stays working when other tools are still active", () => {
