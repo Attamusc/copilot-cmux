@@ -4,54 +4,48 @@
     "sessionStart": [
       {
         "type": "command",
-        "bash": "node ./dist/hook-runner.js sessionStart",
-        "powershell": "node ./dist/hook-runner.js sessionStart",
-        "cwd": ".",
+        "bash": "node \"$COPILOT_PLUGIN_ROOT/dist/hook-runner.js\" sessionStart || true",
+        "powershell": "node \"$env:COPILOT_PLUGIN_ROOT/dist/hook-runner.js\" sessionStart; exit 0",
         "timeoutSec": 10
       }
     ],
     "sessionEnd": [
       {
         "type": "command",
-        "bash": "node ./dist/hook-runner.js sessionEnd",
-        "powershell": "node ./dist/hook-runner.js sessionEnd",
-        "cwd": ".",
+        "bash": "node \"$COPILOT_PLUGIN_ROOT/dist/hook-runner.js\" sessionEnd || true",
+        "powershell": "node \"$env:COPILOT_PLUGIN_ROOT/dist/hook-runner.js\" sessionEnd; exit 0",
         "timeoutSec": 10
       }
     ],
     "userPromptSubmitted": [
       {
         "type": "command",
-        "bash": "node ./dist/hook-runner.js userPromptSubmitted",
-        "powershell": "node ./dist/hook-runner.js userPromptSubmitted",
-        "cwd": ".",
+        "bash": "node \"$COPILOT_PLUGIN_ROOT/dist/hook-runner.js\" userPromptSubmitted || true",
+        "powershell": "node \"$env:COPILOT_PLUGIN_ROOT/dist/hook-runner.js\" userPromptSubmitted; exit 0",
         "timeoutSec": 10
       }
     ],
     "preToolUse": [
       {
         "type": "command",
-        "bash": "node ./dist/hook-runner.js preToolUse",
-        "powershell": "node ./dist/hook-runner.js preToolUse",
-        "cwd": ".",
+        "bash": "node \"$COPILOT_PLUGIN_ROOT/dist/hook-runner.js\" preToolUse || true",
+        "powershell": "node \"$env:COPILOT_PLUGIN_ROOT/dist/hook-runner.js\" preToolUse; exit 0",
         "timeoutSec": 10
       }
     ],
     "postToolUse": [
       {
         "type": "command",
-        "bash": "node ./dist/hook-runner.js postToolUse",
-        "powershell": "node ./dist/hook-runner.js postToolUse",
-        "cwd": ".",
+        "bash": "node \"$COPILOT_PLUGIN_ROOT/dist/hook-runner.js\" postToolUse || true",
+        "powershell": "node \"$env:COPILOT_PLUGIN_ROOT/dist/hook-runner.js\" postToolUse; exit 0",
         "timeoutSec": 10
       }
     ],
     "errorOccurred": [
       {
         "type": "command",
-        "bash": "node ./dist/hook-runner.js errorOccurred",
-        "powershell": "node ./dist/hook-runner.js errorOccurred",
-        "cwd": ".",
+        "bash": "node \"$COPILOT_PLUGIN_ROOT/dist/hook-runner.js\" errorOccurred || true",
+        "powershell": "node \"$env:COPILOT_PLUGIN_ROOT/dist/hook-runner.js\" errorOccurred; exit 0",
         "timeoutSec": 10
       }
     ]
