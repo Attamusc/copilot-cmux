@@ -70,6 +70,11 @@ make plugin-list
 - `sessionEnd` clears active tool state and renders `done`, `idle`, or `error` based on the reason.
 - `errorOccurred` renders an error state and sends an optional cmux notification.
 
+Hooks fired by background sessions — the built-in sidekick agents (`sidekick-*`)
+and Task/subagent tool calls (`toolu_*`) — are ignored. They report the primary
+session's `cwd`, so without filtering they would reset the pill mid-turn and
+fire spurious "done" notifications.
+
 ## Configuration
 
 Environment variables:

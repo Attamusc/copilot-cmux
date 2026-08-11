@@ -15,6 +15,7 @@ import type {
 import { type CopilotHookEvent, parseHookInput } from "./events.js"
 import { createRuntimeState, reduceRuntimeState } from "./reducer.js"
 import { buildPresentationSnapshot } from "./renderer.js"
+import { isPrimarySessionID } from "./session-identity.js"
 import { cleanupStaleStateFiles, withRuntimeState } from "./state-store.js"
 
 function isFileEditTool(toolName: string): boolean {
@@ -220,6 +221,14 @@ export async function processHook(
     return
   }
 
+  if (!isPrimarySessionID(event.sessionId)) {
+    await logger.log("debug", "ignoring non-primary session", {
+      hookName,
+      sessionId: event.sessionId,
+    })
+    return
+  }
+
   if (hookName === "sessionStart") {
     void cleanupStaleStateFiles()
   }
@@ -244,7 +253,8 @@ export async function processHook(
     })
 
     const previousState =
-      currentState ?? createRuntimeState(event.cwd, environment.workspaceID, event.timestamp)
+      currentState ??
+      createRuntimeState(event.cwd, environment.workspaceID, event.timestamp, event.sessionId)
     const nextState = reduceRuntimeState(previousState, event, environment.workspaceID)
 
     await logger.log("debug", "state reduced", {
