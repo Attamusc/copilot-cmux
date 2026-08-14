@@ -13,6 +13,7 @@ import type {
   SidebarLogLevel,
 } from "../types.js"
 import { type CopilotHookEvent, parseHookInput } from "./events.js"
+import { findOrphanedStatusKeys } from "./reaper.js"
 import { createRuntimeState, reduceRuntimeState } from "./reducer.js"
 import { buildPresentationSnapshot, buildWorkspaceProgress } from "./renderer.js"
 import { isPrimarySessionID } from "./session-identity.js"
@@ -24,6 +25,45 @@ function isFileEditTool(toolName: string): boolean {
 
 function projectLabelForCwd(cwd: string): string {
   return basename(cwd) || cwd
+}
+
+/**
+ * Clears pills left behind by surfaces that no longer exist.
+ *
+ * Closing a tab kills its Copilot session without a `sessionEnd` hook, so its
+ * last pill would otherwise stay in the workspace forever. There is no "surface
+ * closed" event to hook, so this runs opportunistically at turn boundaries.
+ *
+ * Entirely best-effort: any failure is logged and swallowed, because a stale
+ * pill is a cosmetic problem and must never take a hook down with it.
+ */
+async function reapOrphanedStatuses(
+  cmux: CmuxClient,
+  config: PluginConfig,
+  logger: HookLogger,
+): Promise<void> {
+  try {
+    const [existingKeys, liveSurfaceIDs] = await Promise.all([
+      cmux.listStatusKeys(),
+      cmux.listLiveSurfaceIDs(),
+    ])
+
+    const orphaned = findOrphanedStatusKeys(config.statusKey, existingKeys, liveSurfaceIDs)
+    if (orphaned.length === 0) return
+
+    await logger.log("debug", "reaping orphaned status entries", {
+      orphaned,
+      liveSurfaceCount: liveSurfaceIDs.length,
+    })
+
+    for (const key of orphaned) {
+      await cmux.clearStatus(key)
+    }
+  } catch (error) {
+    await logger.log("warn", "failed to reap orphaned status entries", {
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
 }
 
 async function renderState(
@@ -91,6 +131,7 @@ async function emitEventEffects(
       if (config.logSessionLifecycle) {
         await logEvent(cmux, "info", `${projectLabel}: Copilot session started (${event.source})`)
       }
+      await reapOrphanedStatuses(cmux, config, logger)
       break
     }
 
@@ -105,6 +146,7 @@ async function emitEventEffects(
       if (config.logSessionLifecycle) {
         await logEvent(cmux, "success", `${projectLabel}: response complete`)
       }
+      await reapOrphanedStatuses(cmux, config, logger)
       if (config.notifyOnTurnEnd) {
         await cmux.notify({
           title: `Ready: ${projectLabel}`,

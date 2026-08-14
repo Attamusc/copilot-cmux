@@ -59,6 +59,15 @@ The two cmux resources behave differently and must be handled differently:
   same value from its own state plus its siblings' state files, so the result is
   independent of which tab wrote last. Do not make progress depend only on the
   current surface's state — it will fight with the other tabs.
+- Nothing tells the plugin when a surface is closed, and cmux status entries
+  outlive the process that set them. Orphaned pills are therefore reaped
+  opportunistically (session start + turn end) by diffing `list_status` against
+  `list_surfaces`. Two invariants must hold: only `<statusKey>.<surfaceID>` keys
+  are eligible (an unkeyed `copilot` entry is cmux's own), and an *empty* live
+  surface list must reap nothing — it means the lookup failed, and treating it
+  as "everything died" would wipe the workspace.
+- `list_surfaces` is socket-only; the CLI has no equivalent, so `CliCmuxClient`
+  returns an empty list and reaping degrades to a no-op.
 - Passing a surface id as `--tab=` to the socket API appears to succeed
   (returns `OK`) but the entry is then unaddressable ("Tab not found" from
   `list_status`). Surface-scoped status is not actually supported; scope by key.

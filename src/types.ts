@@ -65,6 +65,10 @@ export interface CmuxClient {
   notify(payload: NotificationPayload): Promise<void>
   setStatus(key: string, payload: SidebarStatusPayload): Promise<void>
   clearStatus(key: string): Promise<void>
+  /** Status keys currently set on the workspace. Empty when unsupported. */
+  listStatusKeys(): Promise<string[]>
+  /** Surface ids currently alive in the workspace. Empty when unsupported. */
+  listLiveSurfaceIDs(): Promise<string[]>
   setProgress(payload: ProgressPayload): Promise<void>
   clearProgress(): Promise<void>
   log(payload: SidebarLogPayload): Promise<void>

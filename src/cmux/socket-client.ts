@@ -10,11 +10,15 @@ import type {
 import {
   buildSocketClearProgress,
   buildSocketClearStatus,
+  buildSocketListStatus,
+  buildSocketListSurfaces,
   buildSocketLog,
   buildSocketNotify,
   buildSocketSetProgress,
   buildSocketSetStatus,
   parseCmuxResponse,
+  parseStatusKeys,
+  parseSurfaceIDs,
 } from "./commands.js"
 
 interface SocketRequestOptions {
@@ -147,6 +151,16 @@ export class SocketCmuxClient implements CmuxClient {
     await this.sendText(buildSocketClearStatus(key, this.workspaceID), "clear_status")
   }
 
+  public async listStatusKeys(): Promise<string[]> {
+    const raw = await this.requestText(buildSocketListStatus(this.workspaceID), "list_status")
+    return raw === null ? [] : parseStatusKeys(raw)
+  }
+
+  public async listLiveSurfaceIDs(): Promise<string[]> {
+    const raw = await this.requestText(buildSocketListSurfaces(this.workspaceID), "list_surfaces")
+    return raw === null ? [] : parseSurfaceIDs(raw)
+  }
+
   public async setProgress(payload: ProgressPayload): Promise<void> {
     await this.sendText(buildSocketSetProgress(payload, this.workspaceID), "set_progress")
   }
@@ -177,6 +191,21 @@ export class SocketCmuxClient implements CmuxClient {
         error: parsed.error,
       })
     }
+  }
+
+  private async requestText(payload: string, label: string): Promise<string | null> {
+    const outcome = await socketRequest({
+      socketPath: this.socketPath,
+      payload,
+      timeoutMs: this.timeoutMs,
+    })
+
+    if (outcome.error) {
+      await this.handleError(outcome.error, label)
+      return null
+    }
+
+    return outcome.response
   }
 
   private async sendText(payload: string, label: string): Promise<void> {

@@ -90,7 +90,13 @@ this as follows:
   value from the shared state files, so the bar is stable no matter which tab writes last,
   and it is only cleared once no tab is active. With more than one tab busy the label reads
   `<project>: N tabs active`.
-- The pill is **cleared on session end** so closing a tab doesn't orphan a `done` entry.
+- The pill is **cleared on session end** so quitting Copilot doesn't orphan a `done` entry.
+- **Orphaned pills are reaped.** Closing a tab kills its Copilot session without firing
+  `sessionEnd`, so its last pill would otherwise stay in the sidebar forever. On session
+  start and at the end of each turn, pills belonging to surfaces that no longer exist are
+  cleared. Only `<statusKey>.<surfaceID>` entries are touched — an unkeyed `copilot` entry
+  belongs to cmux itself and is left alone. This needs the socket transport, since the CLI
+  has no way to enumerate live surfaces.
 
 ## Configuration
 
