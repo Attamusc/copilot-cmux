@@ -111,6 +111,20 @@ export function reduceRuntimeState(
       }
     }
 
+    case "agent.stop": {
+      // The agent finished responding. Without this the pill would stay on
+      // "thinking"/"working" until the session ends, which for an interactive
+      // session means until the user quits.
+      return {
+        ...currentState,
+        cwd: event.cwd,
+        workspaceID,
+        updatedAt: event.timestamp,
+        phase: currentState.phase === "error" ? "error" : "done",
+        activeTools: {},
+      }
+    }
+
     case "tool.pre": {
       return {
         ...currentState,
@@ -140,7 +154,10 @@ export function reduceRuntimeState(
         workspaceID,
         updatedAt: event.timestamp,
         startedAt: currentState.startedAt ?? event.timestamp,
-        phase: countActiveTools({ ...currentState, activeTools }) > 0 ? "working" : "idle",
+        // Between tool calls the agent is still working on the turn, so fall
+        // back to "thinking" rather than "idle" (which clears the pill and
+        // makes it flicker on every tool call).
+        phase: countActiveTools({ ...currentState, activeTools }) > 0 ? "working" : "thinking",
         activeTools,
         completedTools: currentState.completedTools + 1,
         lastToolName: event.toolName,

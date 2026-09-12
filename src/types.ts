@@ -8,6 +8,7 @@ export type HookName =
   | "userPromptSubmitted"
   | "preToolUse"
   | "postToolUse"
+  | "agentStop"
   | "errorOccurred"
 export type SessionStartSource = "new" | "resume" | "startup"
 export type SessionEndReason = "complete" | "error" | "abort" | "timeout" | "user_exit"
@@ -23,6 +24,7 @@ export interface PluginConfig {
   logToolCalls: boolean
   logSessionLifecycle: boolean
   notifyOnSessionEnd: boolean
+  notifyOnTurnEnd: boolean
   notifyOnErrors: boolean
   logFileEdits: boolean
   debug: boolean
@@ -124,6 +126,12 @@ export interface UserPromptSubmittedHookInput {
   timestamp: number
   cwd: string
   prompt: string
+}
+
+export interface AgentStopHookInput {
+  timestamp: number
+  cwd: string
+  stopReason: string | undefined
 }
 
 export interface PreToolUseHookInput {

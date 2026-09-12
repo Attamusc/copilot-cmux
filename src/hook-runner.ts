@@ -8,6 +8,7 @@ const HOOK_NAMES = new Set<HookName>([
   "userPromptSubmitted",
   "preToolUse",
   "postToolUse",
+  "agentStop",
   "errorOccurred",
 ])
 

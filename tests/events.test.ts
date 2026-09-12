@@ -101,6 +101,55 @@ test("parseHookInput — errorOccurred: extracts error fields", () => {
   }
 })
 
+test("parseHookInput — agentStop: returns event with stop reason", () => {
+  const raw = JSON.stringify({
+    timestamp: 1700000000,
+    cwd: "/home/user/project",
+    transcriptPath: "/tmp/transcript.json",
+    stopReason: "end_turn",
+    stop_hook_active: false,
+  })
+  const event = parseHookInput("agentStop", raw)
+  assert.equal(event.type, "agent.stop")
+  assert.equal(event.timestamp, 1700000000)
+  assert.equal(event.cwd, "/home/user/project")
+  assert.equal(event.type === "agent.stop" && event.stopReason, "end_turn")
+})
+
+test("parseHookInput — agentStop: stopReason is optional", () => {
+  const raw = JSON.stringify({ timestamp: 1, cwd: "/p" })
+  const event = parseHookInput("agentStop", raw)
+  assert.equal(event.type === "agent.stop" && event.stopReason, undefined)
+})
+
+test("parseHookInput — tool hooks tolerate a missing toolArgs", () => {
+  // The CLI omits toolArgs for tools invoked without arguments. Throwing here
+  // used to take down the whole hook.
+  const pre = parseHookInput(
+    "preToolUse",
+    JSON.stringify({ timestamp: 1, cwd: "/p", toolName: "bash" }),
+  )
+  assert.equal(pre.type, "tool.pre")
+
+  const post = parseHookInput(
+    "postToolUse",
+    JSON.stringify({ timestamp: 1, cwd: "/p", toolName: "bash" }),
+  )
+  assert.equal(post.type, "tool.post")
+})
+
+test("parseHookInput — unknown session source falls back instead of throwing", () => {
+  const raw = JSON.stringify({ timestamp: 1, cwd: "/p", source: "something-new" })
+  const event = parseHookInput("sessionStart", raw)
+  assert.equal(event.type === "session.start" && event.source, "new")
+})
+
+test("parseHookInput — unknown session end reason falls back instead of throwing", () => {
+  const raw = JSON.stringify({ timestamp: 1, cwd: "/p", reason: "something-new" })
+  const event = parseHookInput("sessionEnd", raw)
+  assert.equal(event.type === "session.end" && event.reason, "complete")
+})
+
 test("parseHookInput — missing required field throws with present keys", () => {
   const raw = JSON.stringify({ timestamp: 1, source: "new" }) // missing cwd
   assert.throws(() => parseHookInput("sessionStart", raw), {

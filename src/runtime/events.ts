@@ -1,6 +1,7 @@
 import { basename } from "node:path"
 import { summarizeText } from "../text.js"
 import type {
+  AgentStopHookInput,
   ErrorOccurredHookInput,
   HookName,
   PostToolUseHookInput,
@@ -18,6 +19,7 @@ export type CopilotHookEvent =
   | ({ type: "session.start" } & SessionStartHookInput)
   | ({ type: "session.end" } & SessionEndHookInput)
   | ({ type: "user.prompt" } & UserPromptSubmittedHookInput)
+  | ({ type: "agent.stop" } & AgentStopHookInput)
   | ({
       type: "tool.pre"
       summary: string
@@ -83,7 +85,8 @@ function parseSessionStartSource(value: string): SessionStartSource {
   if (value === "new" || value === "resume" || value === "startup") {
     return value
   }
-  throw new Error(`Unsupported session start source: ${value}`)
+  // Be lenient: an unrecognised source must not break status rendering.
+  return "new"
 }
 
 function parseSessionEndReason(value: string): SessionEndReason {
@@ -96,7 +99,7 @@ function parseSessionEndReason(value: string): SessionEndReason {
   ) {
     return value
   }
-  throw new Error(`Unsupported session end reason: ${value}`)
+  return "complete"
 }
 
 function parseToolResult(value: unknown): ToolResult | undefined {
@@ -177,9 +180,18 @@ export function parseHookInput(hookName: HookName, rawInput: string): CopilotHoo
       }
     }
 
+    case "agentStop": {
+      return {
+        type: "agent.stop",
+        timestamp: expectNumber(parsed, "timestamp", context),
+        cwd: expectString(parsed, "cwd", context),
+        stopReason: optionalString(parsed, "stopReason"),
+      }
+    }
+
     case "preToolUse": {
       const toolName = expectString(parsed, "toolName", context)
-      const toolArgs = expectString(parsed, "toolArgs", context)
+      const toolArgs = optionalString(parsed, "toolArgs") ?? ""
       const parsedToolArgs = parseJsonObjectString(toolArgs)
 
       return {
@@ -194,7 +206,7 @@ export function parseHookInput(hookName: HookName, rawInput: string): CopilotHoo
 
     case "postToolUse": {
       const toolName = expectString(parsed, "toolName", context)
-      const toolArgs = expectString(parsed, "toolArgs", context)
+      const toolArgs = optionalString(parsed, "toolArgs") ?? ""
       const parsedToolArgs = parseJsonObjectString(toolArgs)
       const toolResult = parseToolResult(parsed.toolResult)
 

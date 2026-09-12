@@ -64,7 +64,7 @@ test("runtime state tracks prompt, active tools, and completion", () => {
     },
     "workspace-1",
   )
-  assert.equal(state.phase, "idle")
+  assert.equal(state.phase, "thinking")
 
   state = reduceRuntimeState(
     state,
@@ -127,7 +127,7 @@ test("tool.post stays working when other tools are still active", () => {
   )
   assert.equal(state.phase, "working")
 
-  // Second tool completes — now idle
+  // Second tool completes — back to thinking (the turn is still in flight)
   state = reduceRuntimeState(
     state,
     {
@@ -140,7 +140,7 @@ test("tool.post stays working when other tools are still active", () => {
     },
     "workspace-1",
   )
-  assert.equal(state.phase, "idle")
+  assert.equal(state.phase, "thinking")
 })
 
 test("same tool invoked twice stays working until both complete", () => {
@@ -186,7 +186,7 @@ test("same tool invoked twice stays working until both complete", () => {
   assert.equal(state.phase, "working")
   assert.deepEqual(state.activeTools, { bash: 1 })
 
-  // Second bash completes — idle
+  // Second bash completes — back to thinking (the turn is still in flight)
   state = reduceRuntimeState(
     state,
     {
@@ -199,7 +199,7 @@ test("same tool invoked twice stays working until both complete", () => {
     },
     "workspace-1",
   )
-  assert.equal(state.phase, "idle")
+  assert.equal(state.phase, "thinking")
 })
 
 test("reducer tracks file edits from edit tool", () => {
@@ -244,4 +244,70 @@ test("renderer shows active tool status while work is in progress", () => {
   assert.equal(snapshot.status?.icon, "terminal")
   assert.ok(snapshot.progress)
   assert.match(snapshot.progress.label, /^project:/)
+})
+
+test("agent.stop ends the turn instead of leaving the pill spinning", () => {
+  let state = createRuntimeState("/tmp/project", "workspace-1", 1)
+
+  state = reduceRuntimeState(
+    state,
+    { type: "user.prompt", timestamp: 2, cwd: "/tmp/project", prompt: "hi" },
+    "workspace-1",
+  )
+  assert.equal(state.phase, "thinking")
+
+  state = reduceRuntimeState(
+    state,
+    { type: "agent.stop", timestamp: 3, cwd: "/tmp/project", stopReason: "end_turn" },
+    "workspace-1",
+  )
+  assert.equal(state.phase, "done")
+  assert.deepEqual(state.activeTools, {})
+})
+
+test("agent.stop clears tools left active by an abandoned turn", () => {
+  let state = createRuntimeState("/tmp/project", "workspace-1", 1)
+  state = reduceRuntimeState(
+    state,
+    {
+      type: "tool.pre",
+      timestamp: 2,
+      cwd: "/tmp/project",
+      toolName: "bash",
+      summary: "bash",
+      parsedToolArgs: undefined,
+    },
+    "workspace-1",
+  )
+  assert.equal(state.phase, "working")
+
+  state = reduceRuntimeState(
+    state,
+    { type: "agent.stop", timestamp: 3, cwd: "/tmp/project", stopReason: undefined },
+    "workspace-1",
+  )
+  assert.deepEqual(state.activeTools, {})
+  assert.equal(state.phase, "done")
+})
+
+test("agent.stop does not mask an error phase", () => {
+  let state = createRuntimeState("/tmp/project", "workspace-1", 1)
+  state = reduceRuntimeState(
+    state,
+    {
+      type: "error.occurred",
+      timestamp: 2,
+      cwd: "/tmp/project",
+      error: { message: "boom", name: undefined, stack: undefined },
+    },
+    "workspace-1",
+  )
+  assert.equal(state.phase, "error")
+
+  state = reduceRuntimeState(
+    state,
+    { type: "agent.stop", timestamp: 3, cwd: "/tmp/project", stopReason: "end_turn" },
+    "workspace-1",
+  )
+  assert.equal(state.phase, "error")
 })

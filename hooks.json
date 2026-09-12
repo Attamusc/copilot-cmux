@@ -48,6 +48,14 @@
         "powershell": "node \"$env:COPILOT_PLUGIN_ROOT/dist/hook-runner.js\" errorOccurred; exit 0",
         "timeoutSec": 10
       }
+    ],
+    "agentStop": [
+      {
+        "type": "command",
+        "bash": "node \"$COPILOT_PLUGIN_ROOT/dist/hook-runner.js\" agentStop || true",
+        "powershell": "node \"$env:COPILOT_PLUGIN_ROOT/dist/hook-runner.js\" agentStop; exit 0",
+        "timeoutSec": 10
+      }
     ]
   }
 }

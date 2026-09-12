@@ -34,6 +34,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): PluginConfig {
     logToolCalls: parseBoolean(env.COPILOT_CMUX_LOG_TOOLS, true),
     logSessionLifecycle: parseBoolean(env.COPILOT_CMUX_LOG_SESSION_LIFECYCLE, true),
     notifyOnSessionEnd: parseBoolean(env.COPILOT_CMUX_NOTIFY_SESSION_END, true),
+    notifyOnTurnEnd: parseBoolean(env.COPILOT_CMUX_NOTIFY_TURN_END, false),
     notifyOnErrors: parseBoolean(env.COPILOT_CMUX_NOTIFY_ERRORS, true),
     logFileEdits: parseBoolean(env.COPILOT_CMUX_LOG_FILE_EDITS, true),
     debug: parseBoolean(env.COPILOT_CMUX_DEBUG, false),

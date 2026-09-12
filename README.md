@@ -66,6 +66,7 @@ make plugin-list
 - `userPromptSubmitted` marks the session as `thinking` and optionally logs the submitted prompt.
 - `preToolUse` marks the workspace as `working`, increments active tool tracking, and logs the tool.
 - `postToolUse` decrements active tool tracking, logs success/failure/denial, and returns to `thinking` when the agent is between tools.
+- `agentStop` ends the turn: active tool state is cleared and the workspace renders `done`. This is what marks a response as finished — `sessionEnd` only fires when the CLI process itself exits, which in an interactive session means when you quit.
 - `sessionEnd` clears active tool state and renders `done`, `idle`, or `error` based on the reason.
 - `errorOccurred` renders an error state and sends an optional cmux notification.
 
@@ -84,6 +85,7 @@ Environment variables:
 | `COPILOT_CMUX_LOG_TOOLS` | `true` | Log tool start and completion events. |
 | `COPILOT_CMUX_LOG_SESSION_LIFECYCLE` | `true` | Log session start/end transitions. |
 | `COPILOT_CMUX_NOTIFY_SESSION_END` | `true` | Notify when Copilot completes a session successfully. |
+| `COPILOT_CMUX_NOTIFY_TURN_END` | `false` | Notify when Copilot finishes responding to a prompt. Off by default because it fires on every turn. |
 | `COPILOT_CMUX_NOTIFY_ERRORS` | `true` | Notify when Copilot reports an error. |
 | `COPILOT_CMUX_LOG_FILE_EDITS` | `true` | Log file edit/create events to the cmux sidebar. |
 | `COPILOT_CMUX_DEBUG` | `false` | Emit verbose diagnostics to stderr. |
