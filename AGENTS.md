@@ -6,8 +6,17 @@
   Always use `npm run build` (which runs `tsc -p tsconfig.build.json`).
 - `exactOptionalPropertyTypes` is enabled. Do not assign `undefined` to optional
   properties — omit the key entirely or the build fails with a confusing type error.
-- `hooks.json` entry points hardcode `./dist/hook-runner.js`. If build output
-  structure changes, update `hooks.json` to match. Nothing enforces this automatically.
+- `hooks.json` entry points resolve the runner via `$COPILOT_PLUGIN_ROOT`, the plugin
+  install directory that Copilot CLI exports into the hook subprocess. Do not use a
+  relative path or `"cwd": "."` — the CLI resolves those against the *session's* working
+  directory, not the plugin directory, so the runner is only found when the user happens
+  to be sitting in the plugin repo. If build output structure changes, update
+  `hooks.json` to match. Nothing enforces this automatically.
+- Hook commands must always exit 0. Copilot CLI treats a non-zero exit from
+  `preToolUse` as "deny this tool call", so a failing status-bar hook would block
+  every tool call in the session. This is enforced in two places: `hook-runner.ts`
+  sets `process.exitCode = 0` in its top-level catch, and `hooks.json` appends
+  `|| true` (bash) / `; exit 0` (powershell) to cover node itself failing to start.
 - Keep versions in `plugin.json` and `package.json` in sync manually.
 
 ## Dependencies

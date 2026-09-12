@@ -36,5 +36,8 @@ async function main(): Promise<void> {
 main().catch((error: unknown) => {
   const message = error instanceof Error ? (error.stack ?? error.message) : String(error)
   process.stderr.write(`[copilot-cmux] error: ${message}\n`)
-  process.exitCode = 1
+  // Always exit 0. A non-zero exit from a preToolUse hook is interpreted by
+  // Copilot CLI as "deny this tool call", so a cosmetic status-bar plugin
+  // failing must never be able to block the agent.
+  process.exitCode = 0
 })
