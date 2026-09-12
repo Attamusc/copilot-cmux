@@ -5,11 +5,13 @@ export function createRuntimeState(
   cwd: string,
   workspaceID?: string,
   timestamp: number = Date.now(),
+  sessionID?: string,
 ): RuntimeState {
   return {
     version: 1,
     cwd,
     workspaceID,
+    sessionID,
     updatedAt: timestamp,
     startedAt: undefined,
     source: undefined,
@@ -75,10 +77,30 @@ export function reduceRuntimeState(
 ): RuntimeState {
   switch (event.type) {
     case "session.start": {
+      // `userPromptSubmitted` fires *before* `sessionStart` for the first
+      // prompt of a session, so a blanket reset would discard the prompt and
+      // drop the pill back to idle. Only reset for a genuinely new session.
+      const isSameSession =
+        currentState.sessionID !== undefined && currentState.sessionID === event.sessionId
+
+      if (isSameSession) {
+        return {
+          ...currentState,
+          cwd: event.cwd,
+          workspaceID,
+          updatedAt: event.timestamp,
+          startedAt: currentState.startedAt ?? event.timestamp,
+          source: event.source,
+          lastPrompt: currentState.lastPrompt ?? event.initialPrompt,
+          lastSessionEndReason: undefined,
+        }
+      }
+
       return {
         version: 1,
         cwd: event.cwd,
         workspaceID,
+        sessionID: event.sessionId,
         updatedAt: event.timestamp,
         startedAt: event.timestamp,
         source: event.source,
@@ -102,6 +124,7 @@ export function reduceRuntimeState(
         ...currentState,
         cwd: event.cwd,
         workspaceID,
+        sessionID: event.sessionId ?? currentState.sessionID,
         updatedAt: event.timestamp,
         startedAt: currentState.startedAt ?? event.timestamp,
         phase: countActiveTools(currentState) > 0 ? "working" : "thinking",
@@ -119,6 +142,7 @@ export function reduceRuntimeState(
         ...currentState,
         cwd: event.cwd,
         workspaceID,
+        sessionID: event.sessionId ?? currentState.sessionID,
         updatedAt: event.timestamp,
         phase: currentState.phase === "error" ? "error" : "done",
         activeTools: {},
@@ -130,6 +154,7 @@ export function reduceRuntimeState(
         ...currentState,
         cwd: event.cwd,
         workspaceID,
+        sessionID: event.sessionId ?? currentState.sessionID,
         updatedAt: event.timestamp,
         startedAt: currentState.startedAt ?? event.timestamp,
         phase: "working",
@@ -152,6 +177,7 @@ export function reduceRuntimeState(
         ...currentState,
         cwd: event.cwd,
         workspaceID,
+        sessionID: event.sessionId ?? currentState.sessionID,
         updatedAt: event.timestamp,
         startedAt: currentState.startedAt ?? event.timestamp,
         // Between tool calls the agent is still working on the turn, so fall
@@ -173,6 +199,7 @@ export function reduceRuntimeState(
         ...currentState,
         cwd: event.cwd,
         workspaceID,
+        sessionID: event.sessionId ?? currentState.sessionID,
         updatedAt: event.timestamp,
         phase: event.reason === "complete" ? "done" : event.reason === "error" ? "error" : "idle",
         activeTools: {},
@@ -185,6 +212,7 @@ export function reduceRuntimeState(
         ...currentState,
         cwd: event.cwd,
         workspaceID,
+        sessionID: event.sessionId ?? currentState.sessionID,
         updatedAt: event.timestamp,
         phase: "error",
         lastError: {

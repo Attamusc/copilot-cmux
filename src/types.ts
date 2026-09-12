@@ -87,6 +87,7 @@ export interface RuntimeState {
   version: 1
   cwd: string
   workspaceID: string | undefined
+  sessionID: string | undefined
   updatedAt: number
   startedAt: number | undefined
   source: SessionStartSource | undefined
@@ -110,6 +111,7 @@ export interface RuntimeState {
 }
 
 export interface SessionStartHookInput {
+  sessionId: string | undefined
   timestamp: number
   cwd: string
   source: SessionStartSource
@@ -117,24 +119,28 @@ export interface SessionStartHookInput {
 }
 
 export interface SessionEndHookInput {
+  sessionId: string | undefined
   timestamp: number
   cwd: string
   reason: SessionEndReason
 }
 
 export interface UserPromptSubmittedHookInput {
+  sessionId: string | undefined
   timestamp: number
   cwd: string
   prompt: string
 }
 
 export interface AgentStopHookInput {
+  sessionId: string | undefined
   timestamp: number
   cwd: string
   stopReason: string | undefined
 }
 
 export interface PreToolUseHookInput {
+  sessionId: string | undefined
   timestamp: number
   cwd: string
   toolName: string
@@ -147,6 +153,7 @@ export interface ToolResult {
 }
 
 export interface PostToolUseHookInput {
+  sessionId: string | undefined
   timestamp: number
   cwd: string
   toolName: string
@@ -155,6 +162,7 @@ export interface PostToolUseHookInput {
 }
 
 export interface ErrorOccurredHookInput {
+  sessionId: string | undefined
   timestamp: number
   cwd: string
   error: {
