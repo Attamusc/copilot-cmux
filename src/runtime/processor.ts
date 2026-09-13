@@ -14,8 +14,9 @@ import type {
 } from "../types.js"
 import { type CopilotHookEvent, parseHookInput } from "./events.js"
 import { createRuntimeState, reduceRuntimeState } from "./reducer.js"
-import { buildPresentationSnapshot } from "./renderer.js"
-import { cleanupStaleStateFiles, withRuntimeState } from "./state-store.js"
+import { buildPresentationSnapshot, buildWorkspaceProgress } from "./renderer.js"
+import { isPrimarySessionID } from "./session-identity.js"
+import { cleanupStaleStateFiles, readSiblingStates, withRuntimeState } from "./state-store.js"
 
 function isFileEditTool(toolName: string): boolean {
   return toolName === "edit" || toolName === "create"
@@ -28,29 +29,34 @@ function projectLabelForCwd(cwd: string): string {
 async function renderState(
   cmux: CmuxClient,
   config: PluginConfig,
+  statusKey: string,
   state: RuntimeState,
+  siblings: RuntimeState[],
   projectLabel: string,
   logger: HookLogger,
 ): Promise<void> {
   const snapshot = buildPresentationSnapshot(state, config, projectLabel)
+  const progress = buildWorkspaceProgress(state, siblings, config, projectLabel)
 
   await logger.log("debug", "renderState", {
     phase: state.phase,
     activeTools: state.activeTools,
+    statusKey,
+    siblingCount: siblings.length,
     snapshotStatus: snapshot.status?.text,
-    hasProgress: !!snapshot.progress,
+    hasProgress: !!progress,
   })
 
   if (snapshot.status) {
     await logger.log("debug", "setting status", { status: snapshot.status })
-    await cmux.setStatus(config.statusKey, snapshot.status)
+    await cmux.setStatus(statusKey, snapshot.status)
   } else {
     await logger.log("debug", "clearing status")
-    await cmux.clearStatus(config.statusKey)
+    await cmux.clearStatus(statusKey)
   }
 
-  if (snapshot.progress) {
-    await cmux.setProgress(snapshot.progress)
+  if (progress) {
+    await cmux.setProgress(progress)
   } else {
     await cmux.clearProgress()
   }
@@ -67,9 +73,11 @@ async function logEvent(cmux: CmuxClient, level: SidebarLogLevel, message: strin
 async function emitEventEffects(
   cmux: CmuxClient,
   config: PluginConfig,
+  statusKey: string,
   projectLabel: string,
   previousState: RuntimeState,
   nextState: RuntimeState,
+  siblings: RuntimeState[],
   event: CopilotHookEvent,
   logger: HookLogger,
 ): Promise<void> {
@@ -190,7 +198,7 @@ async function emitEventEffects(
     }
   }
 
-  await renderState(cmux, config, nextState, projectLabel, logger)
+  await renderState(cmux, config, statusKey, nextState, siblings, projectLabel, logger)
 }
 
 export async function processHook(
@@ -220,6 +228,14 @@ export async function processHook(
     return
   }
 
+  if (!isPrimarySessionID(event.sessionId)) {
+    await logger.log("debug", "ignoring non-primary session", {
+      hookName,
+      sessionId: event.sessionId,
+    })
+    return
+  }
+
   if (hookName === "sessionStart") {
     void cleanupStaleStateFiles()
   }
@@ -232,30 +248,61 @@ export async function processHook(
   })
   const projectLabel = projectLabelForCwd(event.cwd)
 
+  // cmux status entries are workspace-scoped and identified by key, so each
+  // surface (tab) needs its own key. Sharing one key across tabs meant the last
+  // hook to fire overwrote every other tab's pill.
+  const statusKey = environment.surfaceID
+    ? `${config.statusKey}.${environment.surfaceID}`
+    : config.statusKey
+
+  const siblings = await readSiblingStates(
+    event.cwd,
+    environment.workspaceID,
+    environment.surfaceID,
+  )
+
   await logger.log("debug", "calling withRuntimeState", {
     cwd: event.cwd,
     workspaceID: environment.workspaceID,
+    surfaceID: environment.surfaceID,
+    siblingCount: siblings.length,
   })
 
-  await withRuntimeState(event.cwd, environment.workspaceID, async (currentState) => {
-    await logger.log("debug", "inside withRuntimeState callback", {
-      hasCurrentState: currentState !== null,
-      currentPhase: currentState?.phase,
-    })
+  await withRuntimeState(
+    event.cwd,
+    environment.workspaceID,
+    environment.surfaceID,
+    async (currentState) => {
+      await logger.log("debug", "inside withRuntimeState callback", {
+        hasCurrentState: currentState !== null,
+        currentPhase: currentState?.phase,
+      })
 
-    const previousState =
-      currentState ?? createRuntimeState(event.cwd, environment.workspaceID, event.timestamp)
-    const nextState = reduceRuntimeState(previousState, event, environment.workspaceID)
+      const previousState =
+        currentState ??
+        createRuntimeState(event.cwd, environment.workspaceID, event.timestamp, event.sessionId)
+      const nextState = reduceRuntimeState(previousState, event, environment.workspaceID)
 
-    await logger.log("debug", "state reduced", {
-      previousPhase: previousState.phase,
-      nextPhase: nextState.phase,
-      eventType: event.type,
-    })
+      await logger.log("debug", "state reduced", {
+        previousPhase: previousState.phase,
+        nextPhase: nextState.phase,
+        eventType: event.type,
+      })
 
-    await emitEventEffects(cmux, config, projectLabel, previousState, nextState, event, logger)
-    return nextState
-  })
+      await emitEventEffects(
+        cmux,
+        config,
+        statusKey,
+        projectLabel,
+        previousState,
+        nextState,
+        siblings,
+        event,
+        logger,
+      )
+      return nextState
+    },
+  )
 
   await logger.log("debug", "processHook complete", { hookName })
 }

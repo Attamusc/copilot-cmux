@@ -150,11 +150,13 @@ export function parseHookInput(hookName: HookName, rawInput: string): CopilotHoo
     )
   }
   const parsed = expectObject(raw, context)
+  const sessionId = optionalString(parsed, "sessionId") ?? optionalString(parsed, "session_id")
 
   switch (hookName) {
     case "sessionStart": {
       return {
         type: "session.start",
+        sessionId,
         timestamp: expectNumber(parsed, "timestamp", context),
         cwd: expectString(parsed, "cwd", context),
         source: parseSessionStartSource(expectString(parsed, "source", context)),
@@ -165,6 +167,7 @@ export function parseHookInput(hookName: HookName, rawInput: string): CopilotHoo
     case "sessionEnd": {
       return {
         type: "session.end",
+        sessionId,
         timestamp: expectNumber(parsed, "timestamp", context),
         cwd: expectString(parsed, "cwd", context),
         reason: parseSessionEndReason(expectString(parsed, "reason", context)),
@@ -174,6 +177,7 @@ export function parseHookInput(hookName: HookName, rawInput: string): CopilotHoo
     case "userPromptSubmitted": {
       return {
         type: "user.prompt",
+        sessionId,
         timestamp: expectNumber(parsed, "timestamp", context),
         cwd: expectString(parsed, "cwd", context),
         prompt: expectString(parsed, "prompt", context),
@@ -183,6 +187,7 @@ export function parseHookInput(hookName: HookName, rawInput: string): CopilotHoo
     case "agentStop": {
       return {
         type: "agent.stop",
+        sessionId,
         timestamp: expectNumber(parsed, "timestamp", context),
         cwd: expectString(parsed, "cwd", context),
         stopReason: optionalString(parsed, "stopReason"),
@@ -196,6 +201,7 @@ export function parseHookInput(hookName: HookName, rawInput: string): CopilotHoo
 
       return {
         type: "tool.pre",
+        sessionId,
         timestamp: expectNumber(parsed, "timestamp", context),
         cwd: expectString(parsed, "cwd", context),
         toolName,
@@ -212,6 +218,7 @@ export function parseHookInput(hookName: HookName, rawInput: string): CopilotHoo
 
       return {
         type: "tool.post",
+        sessionId,
         timestamp: expectNumber(parsed, "timestamp", context),
         cwd: expectString(parsed, "cwd", context),
         toolName,
@@ -226,6 +233,7 @@ export function parseHookInput(hookName: HookName, rawInput: string): CopilotHoo
       const error = expectObject(parsed.error, `${context}.error`)
       return {
         type: "error.occurred",
+        sessionId,
         timestamp: expectNumber(parsed, "timestamp", context),
         cwd: expectString(parsed, "cwd", context),
         error: {

@@ -78,9 +78,10 @@ test("runtime state tracks prompt, active tools, and completion", () => {
   )
   assert.equal(state.phase, "done")
 
+  // The session has ended, so the pill is cleared rather than left orphaned in
+  // the workspace after this tab's Copilot process is gone.
   const snapshot = buildPresentationSnapshot(state, config, "project", 4)
-  assert.equal(snapshot.status?.text, "done")
-  assert.equal(snapshot.progress, undefined)
+  assert.deepStrictEqual(snapshot, {})
 })
 
 test("tool.post stays working when other tools are still active", () => {
@@ -310,4 +311,65 @@ test("agent.stop does not mask an error phase", () => {
     "workspace-1",
   )
   assert.equal(state.phase, "error")
+})
+
+test("session.start for the same session does not wipe an in-flight prompt", () => {
+  // Copilot CLI fires userPromptSubmitted *before* sessionStart for the first
+  // prompt of a session. A blanket reset threw the prompt away and dropped the
+  // pill back to idle while the agent was already working.
+  let state = createRuntimeState("/tmp/project", "workspace-1", 1, "s-1")
+
+  state = reduceRuntimeState(
+    state,
+    {
+      type: "user.prompt",
+      sessionId: "s-1",
+      timestamp: 2,
+      cwd: "/tmp/project",
+      prompt: "do the thing",
+    },
+    "workspace-1",
+  )
+
+  state = reduceRuntimeState(
+    state,
+    {
+      type: "session.start",
+      sessionId: "s-1",
+      timestamp: 3,
+      cwd: "/tmp/project",
+      source: "new",
+      initialPrompt: undefined,
+    },
+    "workspace-1",
+  )
+
+  assert.equal(state.phase, "thinking")
+  assert.equal(state.lastPrompt, "do the thing")
+})
+
+test("session.start for a different session resets state", () => {
+  let state = createRuntimeState("/tmp/project", "workspace-1", 1, "s-1")
+  state = reduceRuntimeState(
+    state,
+    { type: "user.prompt", sessionId: "s-1", timestamp: 2, cwd: "/tmp/project", prompt: "old" },
+    "workspace-1",
+  )
+
+  state = reduceRuntimeState(
+    state,
+    {
+      type: "session.start",
+      sessionId: "s-2",
+      timestamp: 3,
+      cwd: "/tmp/project",
+      source: "new",
+      initialPrompt: undefined,
+    },
+    "workspace-1",
+  )
+
+  assert.equal(state.sessionID, "s-2")
+  assert.equal(state.phase, "idle")
+  assert.equal(state.lastPrompt, undefined)
 })
