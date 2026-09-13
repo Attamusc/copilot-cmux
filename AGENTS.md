@@ -46,10 +46,41 @@ These patterns look wrong but are deliberate. Do not "fix" them:
   build a JSON-RPC string with manual quoting via `quoteSocketArg()`. Do not
   unify these — they have different escaping requirements.
 
+## Multi-Tab / Surface Scoping
+
+A cmux workspace holds multiple surfaces (tabs), which typically share a `cwd`.
+The two cmux resources behave differently and must be handled differently:
+
+- **Status entries** are workspace-scoped but keyed, so each surface gets its own
+  key (`copilot.<surfaceID>`). Do not go back to a single shared key — the last
+  hook to fire would overwrite every other tab's pill.
+- **The progress bar is a single unkeyed per-workspace resource.** It genuinely
+  cannot be per-tab. It is therefore *aggregated*: every surface computes the
+  same value from its own state plus its siblings' state files, so the result is
+  independent of which tab wrote last. Do not make progress depend only on the
+  current surface's state — it will fight with the other tabs.
+- Nothing tells the plugin when a surface is closed, and cmux status entries
+  outlive the process that set them. Orphaned pills are therefore reaped
+  opportunistically (session start + turn end) by diffing `list_status` against
+  `list_surfaces`. Two invariants must hold: only `<statusKey>.<surfaceID>` keys
+  are eligible (an unkeyed `copilot` entry is cmux's own), and an *empty* live
+  surface list must reap nothing — it means the lookup failed, and treating it
+  as "everything died" would wipe the workspace.
+- `list_surfaces` is socket-only; the CLI has no equivalent, so `CliCmuxClient`
+  returns an empty list and reaping degrades to a no-op.
+- Passing a surface id as `--tab=` to the socket API appears to succeed
+  (returns `OK`) but the entry is then unaddressable ("Tab not found" from
+  `list_status`). Surface-scoped status is not actually supported; scope by key.
+
 ## State Persistence
 
-- State is JSON-serialized to `/tmp/copilot-cmux/`. `JSON.stringify` strips
-  `undefined` values, so they are lost on round-trip. New optional state fields
+- State is JSON-serialized to `/tmp/copilot-cmux/`, grouped per workspace with
+  one file per surface. Reads of sibling surfaces are best-effort: a malformed
+  or partially written sibling file must never fail the current hook.
+- Tests that write state must use workspace ids unique per run. The per-workspace
+  directory is shared across runs, so a fixed id leaks state between them and
+  makes sibling assertions flaky.
+- `JSON.stringify` strips `undefined` values, so they are lost on round-trip. New optional state fields
   must default to a concrete value or handle missing keys on read.
 - The file lock uses `mkdir()` as an atomic operation with a 30-second stale
   threshold (`STALE_LOCK_THRESHOLD_MS` in `state-store.ts`). The lock recovery

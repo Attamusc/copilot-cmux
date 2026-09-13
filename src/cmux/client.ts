@@ -81,6 +81,17 @@ class CliCmuxClient implements CmuxClient {
     await this.execute("clear-status", buildClearStatusCommand(key, this.workspaceID))
   }
 
+  // Reaping orphaned pills needs to enumerate live surfaces, which the cmux CLI
+  // has no equivalent for (only the socket API exposes `list_surfaces`).
+  // Returning nothing disables reaping rather than guessing.
+  public async listStatusKeys(): Promise<string[]> {
+    return []
+  }
+
+  public async listLiveSurfaceIDs(): Promise<string[]> {
+    return []
+  }
+
   public async setProgress(payload: Parameters<CmuxClient["setProgress"]>[0]): Promise<void> {
     await this.execute("set-progress", buildSetProgressCommand(payload, this.workspaceID))
   }

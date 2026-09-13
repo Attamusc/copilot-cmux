@@ -100,8 +100,10 @@ test("error phase returns alert status without progress", () => {
 })
 
 test("done phase with keepDoneStatus true returns done status", () => {
+  // phase "done" without a session-end reason == the agent finished a turn but
+  // the session (tab) is still open.
   const snap = buildPresentationSnapshot(
-    state({ phase: "done", lastSessionEndReason: "complete" }),
+    state({ phase: "done" }),
     { ...config, keepDoneStatus: true },
     "proj",
     10,
@@ -163,4 +165,14 @@ test("progress label includes project label", () => {
     snap.progress.label.startsWith("my-project:"),
     `expected label to start with "my-project:", got "${snap.progress.label}"`,
   )
+})
+
+test("session end clears the pill instead of orphaning it", () => {
+  const snap = buildPresentationSnapshot(
+    state({ phase: "done", lastSessionEndReason: "user_exit" }),
+    { ...config, keepDoneStatus: true },
+    "proj",
+    10,
+  )
+  assert.deepStrictEqual(snap, {})
 })

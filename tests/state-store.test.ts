@@ -16,9 +16,9 @@ test("round-trip write and read", async () => {
   const cwd = uniqueCwd()
   const state = createRuntimeState(cwd, undefined, 1000)
 
-  await withRuntimeState(cwd, undefined, async () => state)
+  await withRuntimeState(cwd, undefined, undefined, async () => state)
 
-  await withRuntimeState(cwd, undefined, async (current) => {
+  await withRuntimeState(cwd, undefined, undefined, async (current) => {
     // JSON round-trip drops undefined values, so compare via JSON
     assert.deepStrictEqual(current, JSON.parse(JSON.stringify(state)))
     return null // clean up
@@ -28,7 +28,7 @@ test("round-trip write and read", async () => {
 test("null initial state", async () => {
   const cwd = uniqueCwd()
 
-  await withRuntimeState(cwd, undefined, async (current) => {
+  await withRuntimeState(cwd, undefined, undefined, async (current) => {
     assert.strictEqual(current, null)
     return null
   })
@@ -39,13 +39,13 @@ test("returning null removes state file", async () => {
   const state = createRuntimeState(cwd, undefined, 2000)
 
   // Write state
-  await withRuntimeState(cwd, undefined, async () => state)
+  await withRuntimeState(cwd, undefined, undefined, async () => state)
 
   // Remove by returning null
-  await withRuntimeState(cwd, undefined, async () => null)
+  await withRuntimeState(cwd, undefined, undefined, async () => null)
 
   // Verify it's gone
-  await withRuntimeState(cwd, undefined, async (current) => {
+  await withRuntimeState(cwd, undefined, undefined, async (current) => {
     assert.strictEqual(current, null)
     return null
   })
@@ -57,31 +57,31 @@ test("different cwd produces different state", async () => {
   const state = createRuntimeState(cwdA, undefined, 3000)
 
   // Write under cwdA
-  await withRuntimeState(cwdA, undefined, async () => state)
+  await withRuntimeState(cwdA, undefined, undefined, async () => state)
 
   // Read under cwdB → should be null
-  await withRuntimeState(cwdB, undefined, async (current) => {
+  await withRuntimeState(cwdB, undefined, undefined, async (current) => {
     assert.strictEqual(current, null)
     return null
   })
 
   // Clean up cwdA
-  await withRuntimeState(cwdA, undefined, async () => null)
+  await withRuntimeState(cwdA, undefined, undefined, async () => null)
 })
 
 test("lock serialization", async () => {
   const cwd = uniqueCwd()
   const initial = createRuntimeState(cwd, undefined, 4000)
 
-  await withRuntimeState(cwd, undefined, async () => initial)
+  await withRuntimeState(cwd, undefined, undefined, async () => initial)
 
   // Launch two concurrent updates that each bump toolInvocations
-  const a = withRuntimeState(cwd, undefined, async (current) => {
+  const a = withRuntimeState(cwd, undefined, undefined, async (current) => {
     assert.ok(current !== null)
     return { ...current, toolInvocations: current.toolInvocations + 1 }
   })
 
-  const b = withRuntimeState(cwd, undefined, async (current) => {
+  const b = withRuntimeState(cwd, undefined, undefined, async (current) => {
     assert.ok(current !== null)
     return { ...current, toolInvocations: current.toolInvocations + 1 }
   })
@@ -89,7 +89,7 @@ test("lock serialization", async () => {
   await Promise.all([a, b])
 
   // Both completed without error; verify final state is consistent
-  await withRuntimeState(cwd, undefined, async (current) => {
+  await withRuntimeState(cwd, undefined, undefined, async (current) => {
     assert.ok(current !== null)
     // With proper serialization, total should be 2 (each saw the prior write)
     assert.strictEqual(current.toolInvocations, 2)
@@ -145,7 +145,7 @@ test("acquireLock recovers from stale lock left by crashed process", async () =>
   utimesSync(lockPath, sixtySecondsAgo, sixtySecondsAgo)
 
   // withRuntimeState should recover from the stale lock, not time out
-  await withRuntimeState(cwd, undefined, async (current) => {
+  await withRuntimeState(cwd, undefined, undefined, async (current) => {
     assert.strictEqual(current, null)
     return null
   })
@@ -165,7 +165,7 @@ test("stale lock is cleaned up automatically", async () => {
   utimesSync(lockPath, sixtySecondsAgo, sixtySecondsAgo)
 
   // withRuntimeState should succeed despite the stale lock
-  await withRuntimeState(cwd, undefined, async (current) => {
+  await withRuntimeState(cwd, undefined, undefined, async (current) => {
     assert.strictEqual(current, null)
     return null
   })

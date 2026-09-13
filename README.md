@@ -7,7 +7,7 @@
 - Detects whether Copilot CLI is running inside a cmux-managed workspace and safely no-ops outside cmux.
 - Uses automatic Unix socket transport when available, with CLI fallback.
 - Tracks prompt submission, active tool execution, completion, and errors.
-- Maintains lightweight per-workspace state so multiple hook invocations can render a coherent sidebar experience.
+- Maintains lightweight per-surface (per-tab) state so multiple hook invocations can render a coherent sidebar experience.
 - Surfaces `thinking`, `working`, `done`, and `error` states in cmux.
 
 ## Current scope
@@ -69,6 +69,34 @@ make plugin-list
 - `agentStop` ends the turn: active tool state is cleared and the workspace renders `done`. This is what marks a response as finished — `sessionEnd` only fires when the CLI process itself exits, which in an interactive session means when you quit.
 - `sessionEnd` clears active tool state and renders `done`, `idle`, or `error` based on the reason.
 - `errorOccurred` renders an error state and sends an optional cmux notification.
+
+Hooks fired by background sessions — the built-in sidekick agents (`sidekick-*`)
+and Task/subagent tool calls (`toolu_*`) — are ignored. They report the primary
+session's `cwd`, so without filtering they would reset the pill mid-turn and
+fire spurious "done" notifications.
+
+## Multiple tabs in one workspace
+
+A cmux workspace can contain several surfaces (tabs), each running its own Copilot session,
+usually sharing a `cwd`. cmux status entries are workspace-scoped and identified by key, and
+the progress bar is a single per-workspace resource with no key at all. The plugin handles
+this as follows:
+
+- **State** is keyed per surface (`CMUX_SURFACE_ID`), so tabs never share or corrupt each
+  other's active-tool tracking.
+- **Status pills** use a per-surface key (`copilot.<surfaceID>`), so each tab gets its own
+  pill instead of overwriting its neighbours'.
+- **Progress** is aggregated across all tabs in the workspace. Every tab computes the same
+  value from the shared state files, so the bar is stable no matter which tab writes last,
+  and it is only cleared once no tab is active. With more than one tab busy the label reads
+  `<project>: N tabs active`.
+- The pill is **cleared on session end** so quitting Copilot doesn't orphan a `done` entry.
+- **Orphaned pills are reaped.** Closing a tab kills its Copilot session without firing
+  `sessionEnd`, so its last pill would otherwise stay in the sidebar forever. On session
+  start and at the end of each turn, pills belonging to surfaces that no longer exist are
+  cleared. Only `<statusKey>.<surfaceID>` entries are touched — an unkeyed `copilot` entry
+  belongs to cmux itself and is left alone. This needs the socket transport, since the CLI
+  has no way to enumerate live surfaces.
 
 ## Configuration
 

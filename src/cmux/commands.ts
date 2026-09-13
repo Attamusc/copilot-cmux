@@ -146,3 +146,44 @@ export function parseCmuxResponse(raw: string): CmuxResponse | null {
 
   return null
 }
+
+export function buildSocketListStatus(workspaceID?: string): string {
+  return withTab("list_status", workspaceID)
+}
+
+export function buildSocketListSurfaces(workspaceID?: string): string {
+  return workspaceID ? `list_surfaces ${workspaceID}\n` : "list_surfaces\n"
+}
+
+/**
+ * Parses `list_status` output, one entry per line:
+ *
+ *     copilot.<surface-uuid>=done icon=check-circle color=#22c55e
+ */
+export function parseStatusKeys(raw: string): string[] {
+  const keys: string[] = []
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith("ERROR")) continue
+    const separator = trimmed.indexOf("=")
+    if (separator <= 0) continue
+    keys.push(trimmed.slice(0, separator))
+  }
+  return keys
+}
+
+/**
+ * Parses `list_surfaces` output, one surface per line, the selected one marked
+ * with `*`:
+ *
+ *     * 0: 0947C04D-E74D-4AF5-8864-9A4D2B18531A
+ *       1: D40514A2-E8F8-4FEA-AE35-E4E110F8BBBB
+ */
+export function parseSurfaceIDs(raw: string): string[] {
+  const ids: string[] = []
+  for (const line of raw.split("\n")) {
+    const match = /^\s*\*?\s*\d+:\s*(\S+)\s*$/.exec(line)
+    if (match?.[1]) ids.push(match[1])
+  }
+  return ids
+}
